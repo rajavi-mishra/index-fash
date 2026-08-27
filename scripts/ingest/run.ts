@@ -29,9 +29,11 @@ import { loadEnv } from "./env";
 import { buildExplanation } from "./explain";
 import { daysAgo, mapWithConcurrency, SourceError } from "./http";
 import { appendReading, loadSnapshots, saveSnapshots, type SnapshotStore } from "./snapshots";
+import { DEFAULT_ANCHOR, fetchAnchoredInterest } from "./sources/anchoring";
 import { fetchCommerceReading, getAccessToken, type EbayCredentials } from "./sources/ebay";
 import { fetchNewsVolume } from "./sources/gdelt";
 import { fetchSearchInterest } from "./sources/googleTrends";
+import { TrendsSession } from "./sources/googleTrendsScrape";
 import { fetchPageviews } from "./sources/wikipedia";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -45,6 +47,9 @@ const CONCURRENCY = 4;
 interface Config {
   userAgent: string;
   serpApiKey?: string;
+  /** Opt-in to the keyless Trends scraper. Off by default: it's against ToS. */
+  scrapeTrends: boolean;
+  trendsAnchor: string;
   ebay?: EbayCredentials;
 }
 
@@ -63,8 +68,42 @@ function readConfig(): Config {
   return {
     userAgent: `FashionIndex/0.1 (${contact ?? "https://github.com/rajavi-mishra/index-fash"})`,
     serpApiKey: process.env.SERPAPI_KEY,
+    scrapeTrends: process.env.GOOGLE_TRENDS_SCRAPE === "true",
+    trendsAnchor: process.env.GOOGLE_TRENDS_ANCHOR || DEFAULT_ANCHOR,
     ebay: ebayId && ebaySecret ? { clientId: ebayId, clientSecret: ebaySecret } : undefined,
   };
+}
+
+/**
+ * Anchored Trends series keyed by term, fetched in one batched pass before the
+ * per-entity work. Batching is required for correctness, not just speed: terms
+ * are only comparable when they share a request with the anchor.
+ */
+async function prefetchScrapedTrends(config: Config): Promise<Map<string, Point[]>> {
+  if (!config.scrapeTrends) return new Map();
+
+  const terms = [...TRENDS, ...BRANDS, ...COLORS]
+    .map((entity) => entity.trendsTerm)
+    .filter((term): term is string => Boolean(term));
+
+  if (terms.length === 0) return new Map();
+
+  console.log(
+    `· Google Trends (scraped): ${terms.length} terms, anchored on "${config.trendsAnchor}"`,
+  );
+
+  const session = new TrendsSession();
+  const result = await safely("google trends scrape", () =>
+    fetchAnchoredInterest(terms, session, { anchor: config.trendsAnchor }),
+  );
+
+  if (!result || result.size === 0) {
+    console.warn("  ~ no Trends data returned; falling back to Wikipedia pageviews");
+    return new Map();
+  }
+
+  console.log(`  ${result.size}/${terms.length} terms resolved`);
+  return result;
 }
 
 /** Records which sources actually returned data, for the snapshot's meta block. */
@@ -90,6 +129,7 @@ async function collectSignals(
   entity: EntityDef,
   config: Config,
   commerceHistory: SnapshotStore,
+  scrapedTrends: Map<string, Point[]>,
 ): Promise<EntitySignals> {
   const signals: Partial<Record<SignalKey, SignalDetail>> = {};
   let sparklineSource: Point[] | null = null;
@@ -103,12 +143,19 @@ async function collectSignals(
     }
   };
 
-  // --- Search: Google Trends when a key is configured, else Wikipedia pageviews.
+  // --- Search, best available first: paid Trends, scraped Trends, pageviews.
   if (config.serpApiKey && entity.trendsTerm) {
     const series = await safely(`${entity.name} trends`, () =>
       fetchSearchInterest(entity.trendsTerm!, { apiKey: config.serpApiKey! }),
     );
     if (series?.length) record("search", scoreSeries(series), "Google Trends", series);
+  }
+
+  if (!signals.search && entity.trendsTerm) {
+    const series = scrapedTrends.get(entity.trendsTerm);
+    if (series?.length) {
+      record("search", scoreSeries(series), "Google Trends (scraped, anchored)", series);
+    }
   }
 
   if (!signals.search && entity.wikipedia) {
@@ -158,8 +205,14 @@ async function buildItem(
   entity: EntityDef,
   config: Config,
   commerceHistory: SnapshotStore,
+  scrapedTrends: Map<string, Point[]>,
 ): Promise<IndexItem | null> {
-  const { signals, sparklineSource } = await collectSignals(entity, config, commerceHistory);
+  const { signals, sparklineSource } = await collectSignals(
+    entity,
+    config,
+    commerceHistory,
+    scrapedTrends,
+  );
 
   const scores = Object.fromEntries(
     (Object.entries(signals) as [SignalKey, SignalDetail][]).map(([key, detail]) => [
@@ -228,12 +281,18 @@ async function main(): Promise<void> {
   const config = readConfig();
 
   console.log("Fashion Index ingest");
-  console.log(`· search:   ${config.serpApiKey ? "Google Trends (SerpAPI)" : "Wikipedia pageviews"}`);
+  const searchSource = config.serpApiKey
+    ? "Google Trends (SerpAPI)"
+    : config.scrapeTrends
+      ? "Google Trends (scraped) -> Wikipedia pageviews"
+      : "Wikipedia pageviews";
+  console.log(`· search:   ${searchSource}`);
   console.log("· visual:   GDELT news volume");
   console.log(`· commerce: ${config.ebay ? "eBay Browse" : "disabled (no eBay credentials)"}`);
   console.log("· social:   disabled (needs an approved Reddit or social vendor key)\n");
 
   const commerceHistory = await loadSnapshots(SNAPSHOT_FILE);
+  const scrapedTrends = await prefetchScrapedTrends(config);
   await updateCommerceHistory(config, commerceHistory);
 
   const groups: Array<[keyof Pick<FashionIndexData, "trends" | "brands" | "colors">, EntityDef[]]> = [
@@ -247,7 +306,7 @@ async function main(): Promise<void> {
   for (const [key, entities] of groups) {
     console.log(`· ${key}: ${entities.length} entities`);
     const items = await mapWithConcurrency(entities, CONCURRENCY, (entity) =>
-      buildItem(entity, config, commerceHistory),
+      buildItem(entity, config, commerceHistory, scrapedTrends),
     );
     result[key] = items.filter((item): item is IndexItem => item !== null);
   }

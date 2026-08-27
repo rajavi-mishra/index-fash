@@ -27,6 +27,7 @@ and to **say so on screen** rather than quietly pretending to full coverage.
 |---|--:|---|---|---|
 | Search | 30% | Wikipedia pageviews | free, no key | **works now** |
 | Search | 30% | Google Trends (SerpAPI) | ~$75/mo | optional upgrade |
+| Search | 30% | Google Trends (scraped) | free, no key | opt-in, ToS grey |
 | Visual | 30% | GDELT news/editorial volume | free, no key | **works now** |
 | Commerce | 10% | eBay Browse API | free account | optional, accrues |
 | Social | 30% | — | — | not wired (see below) |
@@ -66,12 +67,9 @@ schedule and it fills itself in.
 
 **Google Trends.** The [official Trends API](https://developers.google.com/search/blog/2025/07/trends-api)
 was announced in July 2025 and is *still* an application-gated alpha — worth
-applying for, but not something to plan around. Meanwhile `pytrends` and the
-other scrapers have largely stopped working. The practical route today is
-[SerpAPI's Google Trends endpoint](https://serpapi.com/google-trends-api)
-(~$75/mo). The adapter in `scripts/ingest/sources/googleTrends.ts` targets
-SerpAPI; if you get into the official alpha, swap the URL and response mapping
-there and nothing else in the pipeline changes.
+applying for, but not something to plan around. Paid route:
+[SerpAPI](https://serpapi.com/google-trends-api) (~$75/mo). Free route: scrape
+it — see below.
 
 **Social (the missing 30%).** This is the hardest signal and deliberately not
 faked. Reddit's API is free for non-commercial use at 100 QPM, but
@@ -87,6 +85,75 @@ garment detection. The real version of this signal is your own vision pipeline:
 CLIP-style embeddings plus a garment/color/silhouette classifier run over
 street-style, runway, and celebrity imagery, counting appearances per entity.
 That's the most defensible moat here and the most work.
+
+---
+
+## On scraping Google Trends
+
+Short version: **yes, it works** — and it's implemented here
+(`GOOGLE_TRENDS_SCRAPE=true`, no key needed). But the interesting problem isn't
+the scraping.
+
+### Getting the data
+
+`pytrends` was [archived in April 2025](https://dev.to/esteban_ortega/pytrends-is-dead-heres-how-to-get-google-trends-data-in-2026-1a18)
+and no longer works — but it *rotted* rather than being blocked: its session
+bootstrap stopped acquiring the cookie Google's current flow expects. The
+underlying endpoints still return 200 when called correctly. The flow is two
+hops, implemented in `sources/googleTrendsScrape.ts`:
+
+```
+GET /trends/api/explore                   -> widget descriptors + a token
+GET /trends/api/widgetdata/multiline      -> the actual time series
+```
+
+Both responses are prefixed with `)]}'` (anti-JSON-hijacking) which has to be
+stripped before parsing. You need a cookie from a warm-up request first.
+
+Two honest caveats: it's **against Google's ToS** — the data is public and this
+is widely done, but there's no SLA and it's a real risk on a commercial critical
+path, which is what you're paying SerpAPI to absorb. And Trends **rate-limits
+hard**: fine for 17 terms on a daily cron, needs a proxy pool beyond that. It's
+off by default and degrades to Wikipedia pageviews when throttled.
+
+### The part that actually matters
+
+Two properties of Trends data break naive longitudinal use, and they apply
+**whether you scrape or pay** — this is the data, not the transport:
+
+**1. Values are relative, not absolute.** Every response is normalised so the
+peak of *that request* equals 100. "Boho = 80" means 80% of boho's own peak in
+the window you asked for. Change the window and every number changes. Two
+entities fetched in *separate requests are on different scales* and cannot be
+ranked against each other — which is exactly what an index does.
+
+**2. Results are randomly sampled.** Trends computes from a sample redrawn per
+query, so the identical request returns different numbers on different days
+([Technological Forecasting & Social Change, 2024](https://www.sciencedirect.com/science/article/pii/S0040162524001148)).
+The noise is worst at daily granularity.
+
+Together these mean the obvious implementation — fetch each term separately,
+store today's number, compare to last month's — produces **momentum that is
+partly an artifact of renormalisation.** There's a test asserting exactly this
+failure (`trendsScrape.test.ts`): a perfectly flat underlying reality, fetched
+across two runs that normalised differently, reads as a 60% crash.
+
+**The fix** ([Eichenauer et al., *Economic Inquiry* 2022](https://onlinelibrary.wiley.com/doi/full/10.1111/ecin.13049)):
+put a fixed **anchor term** in every request. Because normalisation happens
+across the whole comparison, co-requested terms share one scale; dividing by the
+anchor's level converts everything into *anchor units*, stable across runs and
+windows because the anchor's real search volume is roughly constant. Trends
+allows 5 terms per request, so each batch carries 1 anchor + 4 targets. That's
+`sources/anchoring.ts`, and the same test shows the flat series correctly
+reading as flat once rebased.
+
+This is why the pipeline batches Trends terms up front rather than fetching them
+per entity — batching is a **correctness** requirement here, not an optimisation.
+
+Worth noting the z-scoring in `scoring.ts` already absorbs some of this, since it
+normalises within a single fetched series. Anchoring is what makes values
+comparable *between* entities and *across* runs.
+
 
 ---
 
@@ -147,7 +214,7 @@ coverage rather than its score.
 ```bash
 npm run dev       # dev server
 npm run ingest    # pull live data -> public/index-data.json
-npm run test      # 34 unit tests (scoring math + adapter parsing)
+npm run test      # 51 unit tests (scoring math, adapter parsing, anchoring)
 npm run build     # typecheck + production build
 npm run lint      # oxlint
 ```
