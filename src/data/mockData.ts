@@ -1,4 +1,11 @@
-import type { FashionIndexData, IndexItem, SourceBreakdown } from "../types";
+/**
+ * Illustrative sample data, used only as a fallback when no live snapshot has
+ * been generated yet (`npm run ingest` writes the real one to
+ * public/index-data.json). Everything here is flagged `sample: true` so the UI
+ * can say plainly that these are not measured numbers.
+ */
+
+import type { FashionIndexData, IndexItem, SignalDetail, SignalKey } from "../types";
 
 function hashSeed(input: string): number {
   let h = 1779033703 ^ input.length;
@@ -20,7 +27,7 @@ function mulberry32(seed: number) {
   };
 }
 
-/** 30-point walk that lands near `endScore`, trending in `direction` for the sparkline. */
+/** 30-point walk that lands near `endScore`, trending in `direction`. */
 function generateHistory(seed: string, endScore: number, direction: "up" | "down"): number[] {
   const rand = mulberry32(hashSeed(seed));
   const points = 30;
@@ -32,11 +39,20 @@ function generateHistory(seed: string, endScore: number, direction: "up" | "down
     const target = start + (endScore - start) * progress;
     const noise = (rand() - 0.5) * 6;
     const prev = history[i - 1];
-    const next = Math.max(2, Math.min(98, prev + (target - prev) * 0.4 + noise));
-    history.push(next);
+    history.push(Math.max(2, Math.min(98, prev + (target - prev) * 0.4 + noise)));
   }
   history[points - 1] = endScore;
   return history;
+}
+
+const SAMPLE_SOURCE = "sample data";
+
+function signals(values: Partial<Record<SignalKey, number>>): Partial<Record<SignalKey, SignalDetail>> {
+  const out: Partial<Record<SignalKey, SignalDetail>> = {};
+  for (const [key, momentum] of Object.entries(values) as [SignalKey, number][]) {
+    out[key] = { score: 50 + momentum, momentum, source: SAMPLE_SOURCE };
+  }
+  return out;
 }
 
 function item(params: {
@@ -45,12 +61,13 @@ function item(params: {
   category: IndexItem["category"];
   score: number;
   change30d: number;
-  breakdown: SourceBreakdown;
-  drivers: IndexItem["drivers"];
+  signals: Partial<Record<SignalKey, number>>;
+  drivers: Array<[string, "up" | "down"]>;
   prediction: string;
   swatch?: string;
 }): IndexItem {
   const direction = params.change30d >= 0 ? "up" : "down";
+  const detail = signals(params.signals);
   return {
     id: params.id,
     name: params.name,
@@ -58,8 +75,9 @@ function item(params: {
     score: params.score,
     change30d: params.change30d,
     direction,
-    breakdown: params.breakdown,
-    drivers: params.drivers,
+    signals: detail,
+    coverage: Object.keys(detail).length / 4,
+    drivers: params.drivers.map(([name, d]) => ({ name, direction: d })),
     history: generateHistory(params.id, params.score, direction),
     prediction: params.prediction,
     swatch: params.swatch,
@@ -73,15 +91,16 @@ const trends: IndexItem[] = [
     category: "trend",
     score: 82,
     change30d: 24,
-    breakdown: { search: 31, social: 42, visual: 19, commerce: 12 },
+    signals: { search: 31, social: 42, visual: 19, commerce: 12 },
     drivers: [
-      { name: "Lace skirts", direction: "up" },
-      { name: "Suede bags", direction: "up" },
-      { name: "Fringe", direction: "up" },
-      { name: "Peasant blouses", direction: "up" },
-      { name: "Crochet", direction: "down" },
+      ["Lace skirts", "up"],
+      ["Suede bags", "up"],
+      ["Fringe", "up"],
+      ["Peasant blouses", "up"],
+      ["Crochet", "down"],
     ],
-    prediction: "Search interest accelerated 31% over 30 days, with lace skirts and suede bags leading new visual appearances. Likely to keep rising for 6–10 weeks.",
+    prediction:
+      "Sample figures. Once you run the ingest, this line is generated from the measured 30-day moves in each source.",
   }),
   item({
     id: "cherry",
@@ -89,14 +108,14 @@ const trends: IndexItem[] = [
     category: "trend",
     score: 79,
     change30d: 19,
-    breakdown: { search: 18, social: 32, visual: 34, commerce: 15 },
+    signals: { search: 18, social: 32, visual: 34, commerce: 15 },
     drivers: [
-      { name: "Leather jackets", direction: "up" },
-      { name: "Mary Janes", direction: "up" },
-      { name: "Nail lacquer", direction: "up" },
-      { name: "Berets", direction: "down" },
+      ["Leather jackets", "up"],
+      ["Mary Janes", "up"],
+      ["Nail lacquer", "up"],
+      ["Berets", "down"],
     ],
-    prediction: "Leather jackets account for 34% of new visual appearances; celebrity adoption up 41%. Momentum likely holds through early autumn.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "suede",
@@ -104,13 +123,13 @@ const trends: IndexItem[] = [
     category: "trend",
     score: 76,
     change30d: 17,
-    breakdown: { search: 22, social: 26, visual: 28, commerce: 18 },
+    signals: { search: 22, social: 26, visual: 28, commerce: 18 },
     drivers: [
-      { name: "Ankle boots", direction: "up" },
-      { name: "Trench coats", direction: "up" },
-      { name: "Crossbody bags", direction: "up" },
+      ["Ankle boots", "up"],
+      ["Trench coats", "up"],
+      ["Crossbody bags", "up"],
     ],
-    prediction: "Commerce signal (sold-out ankle boots, resale premiums) is the fastest-growing input — typically a leading indicator for continued acceleration.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "minimalism",
@@ -118,13 +137,13 @@ const trends: IndexItem[] = [
     category: "trend",
     score: 71,
     change30d: 11,
-    breakdown: { search: 14, social: 9, visual: 15, commerce: 8 },
+    signals: { search: 14, social: 9, visual: 15, commerce: 8 },
     drivers: [
-      { name: "Tailored trousers", direction: "up" },
-      { name: "Monochrome sets", direction: "up" },
-      { name: "Logo-free bags", direction: "up" },
+      ["Tailored trousers", "up"],
+      ["Monochrome sets", "up"],
+      ["Logo-free bags", "up"],
     ],
-    prediction: "Steady, broad-based growth across all four signals. A slow-burn trend rather than a spike — expect gradual continued rise.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "office-siren",
@@ -132,13 +151,13 @@ const trends: IndexItem[] = [
     category: "trend",
     score: 54,
     change30d: -6,
-    breakdown: { search: -9, social: -4, visual: 2, commerce: -11 },
+    signals: { search: -9, social: -4, visual: 2, commerce: -11 },
     drivers: [
-      { name: "Pencil skirts", direction: "down" },
-      { name: "Cat-eye glasses", direction: "down" },
-      { name: "Slicked buns", direction: "down" },
+      ["Pencil skirts", "down"],
+      ["Cat-eye glasses", "down"],
+      ["Slicked buns", "down"],
     ],
-    prediction: "Search and commerce are both cooling while visual appearances hold flat — a sign the aesthetic is plateauing before a likely decline.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "balletcore",
@@ -146,13 +165,13 @@ const trends: IndexItem[] = [
     category: "trend",
     score: 48,
     change30d: -12,
-    breakdown: { search: -15, social: -18, visual: -7, commerce: -6 },
+    signals: { search: -15, social: -18, visual: -7, commerce: -6 },
     drivers: [
-      { name: "Ballet flats", direction: "down" },
-      { name: "Leg warmers", direction: "down" },
-      { name: "Wrap tops", direction: "down" },
+      ["Ballet flats", "down"],
+      ["Leg warmers", "down"],
+      ["Wrap tops", "down"],
     ],
-    prediction: "Decline is broad-based and accelerating on social. Likely to keep fading over the next 4–6 weeks.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
 ];
 
@@ -163,13 +182,13 @@ const brands: IndexItem[] = [
     category: "brand",
     score: 88,
     change30d: 21,
-    breakdown: { search: 24, social: 29, visual: 18, commerce: 14 },
+    signals: { search: 24, social: 29, visual: 18, commerce: 14 },
     drivers: [
-      { name: "Runway coverage", direction: "up" },
-      { name: "Celebrity styling", direction: "up" },
-      { name: "Resale demand", direction: "up" },
+      ["Runway coverage", "up"],
+      ["Celebrity styling", "up"],
+      ["Resale demand", "up"],
     ],
-    prediction: "Sustained runway-to-street pipeline. Attention growth has held for three consecutive months.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "coach",
@@ -177,12 +196,12 @@ const brands: IndexItem[] = [
     category: "brand",
     score: 74,
     change30d: 15,
-    breakdown: { search: 19, social: 22, visual: 11, commerce: 9 },
+    signals: { search: 19, social: 22, visual: 11, commerce: 9 },
     drivers: [
-      { name: "Tabby bag", direction: "up" },
-      { name: "Gen Z campaign reach", direction: "up" },
+      ["Tabby bag", "up"],
+      ["Gen Z campaign reach", "up"],
     ],
-    prediction: "Social-led growth concentrated in one hero product. Watch for diversification to sustain past this cycle.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "bottega-veneta",
@@ -190,12 +209,12 @@ const brands: IndexItem[] = [
     category: "brand",
     score: 70,
     change30d: 9,
-    breakdown: { search: 11, social: 8, visual: 13, commerce: 6 },
+    signals: { search: 11, social: 8, visual: 13, commerce: 6 },
     drivers: [
-      { name: "Intrecciato leather goods", direction: "up" },
-      { name: "Editorial placements", direction: "up" },
+      ["Intrecciato leather goods", "up"],
+      ["Editorial placements", "up"],
     ],
-    prediction: "Consistent, editorial-driven growth rather than viral spikes — typically more durable.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "gucci",
@@ -203,12 +222,12 @@ const brands: IndexItem[] = [
     category: "brand",
     score: 61,
     change30d: -8,
-    breakdown: { search: -6, social: -12, visual: -4, commerce: -9 },
+    signals: { search: -6, social: -12, visual: -4, commerce: -9 },
     drivers: [
-      { name: "Logo monogram pieces", direction: "down" },
-      { name: "New creative direction reception", direction: "down" },
+      ["Logo monogram pieces", "down"],
+      ["New creative direction reception", "down"],
     ],
-    prediction: "Attention softening across all signals following the creative-direction transition. Typical adjustment period is 2–3 quarters.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
 ];
 
@@ -220,12 +239,12 @@ const colors: IndexItem[] = [
     score: 77,
     change30d: 18,
     swatch: "#3b2418",
-    breakdown: { search: 20, social: 21, visual: 16, commerce: 13 },
+    signals: { search: 20, social: 21, visual: 16, commerce: 13 },
     drivers: [
-      { name: "Outerwear", direction: "up" },
-      { name: "Handbags", direction: "up" },
+      ["Outerwear", "up"],
+      ["Handbags", "up"],
     ],
-    prediction: "Neutral-driven rise typical of a transitional-season color. Expect continued strength into winter.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "olive",
@@ -234,12 +253,12 @@ const colors: IndexItem[] = [
     score: 68,
     change30d: 14,
     swatch: "#5c5f36",
-    breakdown: { search: 16, social: 15, visual: 12, commerce: 10 },
+    signals: { search: 16, social: 15, visual: 12, commerce: 10 },
     drivers: [
-      { name: "Utility jackets", direction: "up" },
-      { name: "Cargo pants", direction: "up" },
+      ["Utility jackets", "up"],
+      ["Cargo pants", "up"],
     ],
-    prediction: "Broad, steady adoption across categories — low volatility, durable trend.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "cherry-color",
@@ -248,13 +267,13 @@ const colors: IndexItem[] = [
     score: 81,
     change30d: 27,
     swatch: "#8c1c2b",
-    breakdown: { search: 18, social: 35, visual: 30, commerce: 20 },
+    signals: { search: 18, social: 35, visual: 30, commerce: 20 },
     drivers: [
-      { name: "Leather jackets", direction: "up" },
-      { name: "Lip color", direction: "up" },
-      { name: "Nails", direction: "up" },
+      ["Leather jackets", "up"],
+      ["Lip color", "up"],
+      ["Nails", "up"],
     ],
-    prediction: "Fastest-accelerating color signal this cycle, mirrors the Cherry/Oxblood trend index. Likely to continue rising for 6–10 weeks.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
   item({
     id: "powder-pink",
@@ -263,12 +282,12 @@ const colors: IndexItem[] = [
     score: 41,
     change30d: -8,
     swatch: "#e7c6cf",
-    breakdown: { search: -10, social: -9, visual: -3, commerce: -6 },
+    signals: { search: -10, social: -9, visual: -3, commerce: -6 },
     drivers: [
-      { name: "Loungewear", direction: "down" },
-      { name: "Accessories", direction: "down" },
+      ["Loungewear", "down"],
+      ["Accessories", "down"],
     ],
-    prediction: "Cooling steadily since spring peak. Typical seasonal fade — watch for a rebound next spring.",
+    prediction: "Sample figures pending a live ingest run.",
   }),
 ];
 
@@ -282,4 +301,9 @@ export const fashionIndexData: FashionIndexData = {
   trends,
   brands,
   colors,
+  meta: {
+    generatedAt: new Date().toISOString(),
+    sources: [SAMPLE_SOURCE],
+    sample: true,
+  },
 };

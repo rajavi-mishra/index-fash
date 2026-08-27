@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Live snapshot written by `npm run ingest` — regenerate, do not commit
+public/index-data.json
+
+# API keys
+.env
