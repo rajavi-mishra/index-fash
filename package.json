@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "ingest": "tsx scripts/ingest/run.ts",
+    "experiment:dua-lipa-bags": "tsx experiments/dua-lipa-bags/run.ts",
     "preview": "vite preview"
   },
   "dependencies": {

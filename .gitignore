@@ -26,5 +26,10 @@ dist-ssr
 # Live snapshot written by `npm run ingest` — regenerate, do not commit
 public/index-data.json
 
+# Downloaded images and generated report from experiments/dua-lipa-bags —
+# regenerate, do not commit (seed-urls.json and sample-report.json are kept)
+experiments/dua-lipa-bags/data/images
+experiments/dua-lipa-bags/data/report.json
+
 # API keys
 .env

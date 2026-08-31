@@ -226,7 +226,8 @@ accumulate history.
 ## Roadmap
 
 - Wire a social source once Reddit approval or a vendor key is in hand.
-- Own the visual signal: a classifier over runway/street-style imagery.
+- Own the visual signal: a classifier over runway/street-style imagery — early
+  prototype in [`experiments/dua-lipa-bags/`](./experiments/dua-lipa-bags/).
 - Geographic breakdown — Google Trends exposes ~210 US DMAs.
 - Historical browsing: keep every snapshot, not just the latest.
 - A Cultural Index (celebrities, TV, music) and a Silhouette Index.

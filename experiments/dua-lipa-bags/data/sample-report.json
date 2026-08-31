@@ -1,0 +1,179 @@
+{
+  "subject": "Dua Lipa",
+  "generatedAt": "2026-08-31T00:00:00.000Z",
+  "sample": true,
+  "totalCandidates": 6,
+  "analyzedCount": 5,
+  "brandFrequency": [
+    { "brand": "Jacquemus", "count": 2, "averageWeirdness": 72.5 },
+    { "brand": "Bottega Veneta", "count": 1, "averageWeirdness": 55 },
+    { "brand": "Coach", "count": 1, "averageWeirdness": 15 },
+    { "brand": "unknown", "count": 1, "averageWeirdness": 88 }
+  ],
+  "averageWeirdness": 56.7,
+  "weirdestBags": [
+    {
+      "imageId": "sample05",
+      "brand": "unknown",
+      "score": 88,
+      "traits": ["novelty form", "exaggerated scale", "unexpected fabric"],
+      "caption": "Illustrative example: an oversized sculptural bag shaped like an everyday object, in a glossy latex-like finish.",
+      "sourceUrl": "https://example.com/sample-05"
+    },
+    {
+      "imageId": "sample02",
+      "brand": "Jacquemus",
+      "score": 80,
+      "traits": ["unconventional shape", "exaggerated scale"],
+      "caption": "Illustrative example: a micro top-handle bag scaled down to a near-nonfunctional size, held as a styling accent.",
+      "sourceUrl": "https://example.com/sample-02"
+    },
+    {
+      "imageId": "sample04",
+      "brand": "Jacquemus",
+      "score": 65,
+      "traits": ["clashing pattern", "loud print"],
+      "caption": "Illustrative example: a crescent-shaped bag in a bold clashing color-block print.",
+      "sourceUrl": "https://example.com/sample-04"
+    },
+    {
+      "imageId": "sample03",
+      "brand": "Bottega Veneta",
+      "score": 55,
+      "traits": ["unusual hardware"],
+      "caption": "Illustrative example: an intrecciato-weave pouch with an oversized knot handle.",
+      "sourceUrl": "https://example.com/sample-03"
+    },
+    {
+      "imageId": "sample01",
+      "brand": "Coach",
+      "score": 15,
+      "traits": [],
+      "caption": "Illustrative example: a classic structured leather tote in tan, worn on the shoulder.",
+      "sourceUrl": "https://example.com/sample-01"
+    }
+  ],
+  "sentimentTrend": [
+    { "date": "2026-06-02", "score": 78 },
+    { "date": "2026-07-11", "score": 52 },
+    { "date": "2026-08-20", "score": 40 }
+  ],
+  "overallSentiment": { "score": 56, "label": "neutral" },
+  "entries": [
+    {
+      "id": "sample01",
+      "sourceUrl": "https://example.com/sample-01",
+      "imageUrl": "https://example.com/sample-01.jpg",
+      "title": "Illustrative example — airport look",
+      "date": "2026-06-02",
+      "provider": "seed-list",
+      "analysis": {
+        "imageId": "sample01",
+        "bagDetected": true,
+        "brand": "Coach",
+        "brandConfidence": "medium",
+        "shape": "structured top-handle tote",
+        "material": "smooth leather",
+        "pattern": "solid",
+        "colorway": "tan",
+        "weirdness": { "score": 15, "traits": [], "reasoning": "A conventional, market-standard silhouette in a neutral colorway — nothing about the shape, print, or fabric departs from a classic tote." },
+        "sentiment": { "score": 78, "label": "positive", "reasoning": "Reads as an easy, well-received classic pairing." },
+        "caption": "Illustrative example: a classic structured leather tote in tan, worn on the shoulder."
+      }
+    },
+    {
+      "id": "sample02",
+      "sourceUrl": "https://example.com/sample-02",
+      "imageUrl": "https://example.com/sample-02.jpg",
+      "title": "Illustrative example — evening look",
+      "date": "2026-07-11",
+      "provider": "seed-list",
+      "analysis": {
+        "imageId": "sample02",
+        "bagDetected": true,
+        "brand": "Jacquemus",
+        "brandConfidence": "high",
+        "shape": "micro top-handle",
+        "material": "smooth leather",
+        "pattern": "solid",
+        "colorway": "red",
+        "weirdness": { "score": 80, "traits": ["unconventional shape", "exaggerated scale"], "reasoning": "The bag is scaled down well past functional size, which reads as a styling statement rather than a practical accessory." },
+        "sentiment": { "score": 52, "label": "neutral", "reasoning": "Bold and talked-about, but divisive rather than universally well received." },
+        "caption": "Illustrative example: a micro top-handle bag scaled down to a near-nonfunctional size, held as a styling accent."
+      }
+    },
+    {
+      "id": "sample03",
+      "sourceUrl": "https://example.com/sample-03",
+      "imageUrl": "https://example.com/sample-03.jpg",
+      "title": "Illustrative example — street style",
+      "date": "2026-08-20",
+      "provider": "seed-list",
+      "analysis": {
+        "imageId": "sample03",
+        "bagDetected": true,
+        "brand": "Bottega Veneta",
+        "brandConfidence": "high",
+        "shape": "slouchy pouch",
+        "material": "woven leather",
+        "pattern": "intrecciato weave",
+        "colorway": "olive",
+        "weirdness": { "score": 55, "traits": ["unusual hardware"], "reasoning": "The woven texture is a known signature rather than novel, but the oversized knot handle is an unconventional hardware choice." },
+        "sentiment": { "score": 66, "label": "positive", "reasoning": "Generally well-regarded, craft-forward pairing." },
+        "caption": "Illustrative example: an intrecciato-weave pouch with an oversized knot handle."
+      }
+    },
+    {
+      "id": "sample04",
+      "sourceUrl": "https://example.com/sample-04",
+      "imageUrl": "https://example.com/sample-04.jpg",
+      "title": "Illustrative example — festival look",
+      "date": null,
+      "provider": "seed-list",
+      "analysis": {
+        "imageId": "sample04",
+        "bagDetected": true,
+        "brand": "Jacquemus",
+        "brandConfidence": "medium",
+        "shape": "crescent",
+        "material": "canvas",
+        "pattern": "color-block",
+        "colorway": "clashing brights",
+        "weirdness": { "score": 65, "traits": ["clashing pattern", "loud print"], "reasoning": "The color-blocking deliberately clashes rather than coordinates with the rest of the look, pushing it past a standard bold-color choice." },
+        "sentiment": { "score": 60, "label": "positive", "reasoning": "Playful and on-trend for a festival context." },
+        "caption": "Illustrative example: a crescent-shaped bag in a bold clashing color-block print."
+      }
+    },
+    {
+      "id": "sample05",
+      "sourceUrl": "https://example.com/sample-05",
+      "imageUrl": "https://example.com/sample-05.jpg",
+      "title": "Illustrative example — red carpet",
+      "date": null,
+      "provider": "seed-list",
+      "analysis": {
+        "imageId": "sample05",
+        "bagDetected": true,
+        "brand": "unknown",
+        "brandConfidence": "low",
+        "shape": "sculptural novelty form",
+        "material": "glossy latex-like finish",
+        "pattern": "solid",
+        "colorway": "metallic silver",
+        "weirdness": { "score": 88, "traits": ["novelty form", "exaggerated scale", "unexpected fabric"], "reasoning": "The bag departs from any standard handbag silhouette entirely, is scaled well beyond typical proportions, and uses a non-traditional glossy material — three compounding factors rather than one." },
+        "sentiment": { "score": 8, "label": "negative", "reasoning": "Illustrative low score, showing how a maximally unconventional piece can read as divisive rather than celebrated." },
+        "caption": "Illustrative example: an oversized sculptural bag shaped like an everyday object, in a glossy latex-like finish."
+      }
+    },
+    {
+      "id": "sample06",
+      "sourceUrl": "https://example.com/sample-06",
+      "imageUrl": "https://example.com/sample-06.jpg",
+      "title": "Illustrative example — no bag visible",
+      "date": null,
+      "provider": "seed-list",
+      "analysis": null,
+      "error": "download failed (illustrative placeholder entry, showing how failures are recorded)"
+    }
+  ]
+}
